@@ -1,0 +1,1 @@
+add receiver node to icr_candidate node and compare the result with without adding receiver to icr_candidate
