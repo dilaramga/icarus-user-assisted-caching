@@ -433,14 +433,17 @@ class UARandomChoice(Strategy):
     def process_event(self, time, receiver, content, log):
         # get all required data
         source = self.view.content_source(content)
+        '''
+            use content location code here
+        '''
         path = self.view.shortest_path(receiver, source)
         # Route requests to original source and queries caches on the path
         self.controller.start_session(time, receiver, content, log)
         
         if self.view.has_cache(receiver):
-            self.controller.get_content(receiver)
-            serving_node=receiver
-            self.controller.end_session()
+            if(self.controller.get_content(receiver)):                
+                serving_node=receiver
+                self.controller.end_session()
         else:            
             for u, v in path_links(path):
                 self.controller.forward_request_hop(u, v)
@@ -459,5 +462,7 @@ class UARandomChoice(Strategy):
             for u, v in path_links(path):
                 self.controller.forward_content_hop(u, v)
                 if v == designated_cache:
+                    #??put content on the receiver
                     self.controller.put_content(v)
+            self.controller.put_content(receiver)
             self.controller.end_session()
