@@ -436,15 +436,19 @@ class UARandomChoice(Strategy):
         '''
             use content location code here
         '''
+        location_of_content = self.view.content_locations(content)
+        ##print location_of_content
         path = self.view.shortest_path(receiver, source)
         # Route requests to original source and queries caches on the path
         self.controller.start_session(time, receiver, content, log)
         
         if self.view.has_cache(receiver):
-            if(self.controller.get_content(receiver)):                
+            print 'receiver has cache'
+            if self.controller.get_content(receiver):
+                print 'content found in receiver'                 
                 serving_node=receiver
                 self.controller.end_session()
-        else:            
+        else:           
             for u, v in path_links(path):
                 self.controller.forward_request_hop(u, v)
                 if self.view.has_cache(v):
@@ -462,7 +466,7 @@ class UARandomChoice(Strategy):
             for u, v in path_links(path):
                 self.controller.forward_content_hop(u, v)
                 if v == designated_cache:
-                    #??put content on the receiver
                     self.controller.put_content(v)
             self.controller.put_content(receiver)
+            #put content on the receiver
             self.controller.end_session()

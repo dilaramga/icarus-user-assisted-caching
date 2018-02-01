@@ -226,7 +226,7 @@ RESULTS_FORMAT = 'PICKLE'
 
 # Number of times each experiment is replicated
 # This is necessary for extracting confidence interval of selected metrics
-N_REPLICATIONS = 2
+N_REPLICATIONS = 1
 
 # List of metrics to be measured in the experiments
 # The implementation of data collectors are located in ./icaurs/execution/collectors.py
@@ -279,7 +279,6 @@ TOPOLOGIES =  [
 # The code is located in ./icarus/models/strategy.py
 # Remove strategies not needed
 STRATEGIES = [
-     'RAND_CHOICE',
      'UA_RC'     # Random choice: cache in one random cache on path
              ]
 
