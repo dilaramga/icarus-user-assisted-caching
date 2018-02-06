@@ -395,7 +395,7 @@ def topology_tiscali(**kwargs):
     for v in sources:
         fnss.add_stack(topology, v, 'source')
     for v in receivers:
-        fnss.add_stack(topology, v, 'receivers')
+        fnss.add_stack(topology, v, 'receiver')
     for v in routers:
         fnss.add_stack(topology, v, 'router')
 
@@ -409,7 +409,6 @@ def topology_tiscali(**kwargs):
         else:
             topology.edge[u][v]['type'] = 'internal'
     return IcnTopology(topology)
-
 
 @register_topology_factory('WIDE')
 def topology_wide(**kwargs):

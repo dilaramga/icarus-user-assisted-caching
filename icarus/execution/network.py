@@ -373,7 +373,7 @@ class NetworkModel(object):
         cache_size = {}
         for node in topology.nodes_iter():
             stack_name, stack_props = fnss.get_stack(topology, node)
-            if stack_name == 'router':
+            if stack_name == 'router' or stack_name == 'receiver':
                 if 'cache_size' in stack_props:
                     cache_size[node] = stack_props['cache_size']
             elif stack_name == 'source':
