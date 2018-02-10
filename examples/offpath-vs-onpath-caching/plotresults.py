@@ -8,6 +8,8 @@ import collections
 import logging
 
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from icarus.util import Settings, Tree, config_logging, step_cdf
@@ -64,7 +66,7 @@ STRATEGY_STYLE = {
 STRATEGY_LEGEND = {
          'LCE':             'LCE',
          'LCD':             'LCD',
-         'UA_RC':         'HR Symm',
+         'UA_RC':         'User-assisted random choice',
          'HR_ASYMM':        'HR Asymm',
          'HR_MULTICAST':    'HR Multicast',         
          'HR_HYBRID_AM':    'HR Hybrid AM',

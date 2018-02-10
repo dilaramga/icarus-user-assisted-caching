@@ -378,7 +378,6 @@ def topology_tiscali(**kwargs):
     # we assume that receivers are nodes not well connected to the network
     # they are 36
     receivers = [v for v in onedeg if deg[list(topology.edge[v].keys())[0]] < 4.5]
-    print receivers
     for i in receivers:
         icr_candidates.append(i)
     #icr_candidates.append(receivers)

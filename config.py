@@ -245,7 +245,7 @@ DATA_COLLECTORS = [
 # Default experiment values, i.e. values shared by all experiments
 
 # Number of content objects
-N_CONTENTS = 3*10**5
+N_CONTENTS = 10**4
 
 # Number of content requests generated to pre-populate the caches
 # These requests are not logged
@@ -261,7 +261,7 @@ REQ_RATE = 100.0
 CACHE_POLICY = 'LRU'
 
 # Zipf alpha parameter, remove parameters not needed
-ALPHA = [0.6]
+ALPHA = [0.5]
 
 # Total size of network cache as a fraction of content population
 # Remove sizes not needed
@@ -279,7 +279,8 @@ TOPOLOGIES =  [
 # The code is located in ./icarus/models/strategy.py
 # Remove strategies not needed
 STRATEGIES = [
-     'UA_RC'     # Random choice: cache in one random cache on path
+        'RAND_CHOICE',
+        'UA_RC'     # Random choice: cache in one random cache on path
              ]
 
 # Instantiate experiment queue

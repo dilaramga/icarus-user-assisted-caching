@@ -96,7 +96,34 @@ class NetworkView(object):
         if source:
             loc.add(source)
         return loc
+    #WRITE CONTENT LOCATION FOR RECEIVERS, THAT WILL RETURNS ALL THE RECEIVER WITH THE CONTENT ( TAKES IN K AS ARGUMENT)
+    def content_locations_of_receivers(self, k):
+        """Return a set of all current locations of a specific content.
 
+        This include both persistent content sources and temporary caches.
+
+        Parameters
+        ----------
+        k : any hashable type
+            The content identifier
+
+        Returns
+        -------
+        nodes : set
+            A set of all nodes currently storing the given content
+        """
+        loc = set(v for v in self.model.cache if self.model.cache[v].has(k))
+        new_loc=[]
+        
+        for i, (name, props)  in self.model.topology.stacks().items():
+            for j in loc:
+                if j==i:
+                    if name == 'receiver':
+                        new_loc.append(j)
+        return new_loc
+       
+        #loc includes the receivers and router nodes, so I have to remove the router nodes
+        
     def content_source(self, k):
         """Return the node identifier where the content is persistently stored.
 
@@ -371,9 +398,11 @@ class NetworkModel(object):
                 self.link_delay[(v, u)] = delay
 
         cache_size = {}
+                
         for node in topology.nodes_iter():
             stack_name, stack_props = fnss.get_stack(topology, node)
             if stack_name == 'router' or stack_name == 'receiver':
+                         
                 if 'cache_size' in stack_props:
                     cache_size[node] = stack_props['cache_size']
             elif stack_name == 'source':
