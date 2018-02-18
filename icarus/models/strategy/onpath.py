@@ -15,10 +15,15 @@ __all__ = [
        'LeaveCopyEverywhere',
        'LeaveCopyDown',
        'ProbCache',
+       'ProbCacheWithReceiverAsICRCandidate',
+       'UAProbCache',
        'CacheLessForMore',
        'RandomBernoulli',
        'RandomChoice',
-       'UARandomChoice'
+       'RandomChoiceWithReceiverAsICRCandidate',
+       'UARandomChoiceRR',
+       'UARandomChoiceRR'  
+       
            ]
 
 
@@ -239,6 +244,7 @@ class ProbCache(Strategy):
         source = self.view.content_source(content)
         path = self.view.shortest_path(receiver, source)
         # Route requests to original source and queries caches on the path
+        
         self.controller.start_session(time, receiver, content, log)
         for hop in range(1, len(path)):
             u = path[hop - 1]
@@ -272,6 +278,136 @@ class ProbCache(Strategy):
                     self.controller.put_content(v)
         self.controller.end_session()
 
+#ProbCache with receivers node being able to store content
+@register_strategy('PROB_CACHE...rec_icr')
+class ProbCacheWithReceiverAsICRCandidate(Strategy):
+    
+    @inheritdoc(Strategy)
+    def __init__(self, view, controller, t_tw=10):
+        super(ProbCacheWithReceiverAsICRCandidate, self).__init__(view, controller)
+        self.t_tw = t_tw
+        self.cache_size = view.cache_nodes(size=True)
+
+    @inheritdoc(Strategy)
+    def process_event(self, time, receiver, content, log):
+        # get all required data
+        source = self.view.content_source(content)
+        if self.view.has_cache(receiver):
+            if self.controller.get_content(receiver):                
+                serving_node=receiver
+                self.controller.end_session()
+                return   
+        path = self.view.shortest_path(receiver, source)
+        # Route requests to original source and queries caches on the path
+        self.controller.start_session(time, receiver, content, log)
+        for hop in range(1, len(path)):
+            u = path[hop - 1]
+            v = path[hop]
+            self.controller.forward_request_hop(u, v)
+            if self.view.has_cache(v):
+                if self.controller.get_content(v):
+                    serving_node = v
+                    break
+        else:
+            # No cache hits, get content from source
+            self.controller.get_content(v)
+            serving_node = v
+        # Return content
+        path = list(reversed(self.view.shortest_path(receiver, serving_node)))
+        c = len([v for v in path if self.view.has_cache(v)])
+        x = 0.0
+        for hop in range(1, len(path)):
+            u = path[hop - 1]
+            v = path[hop]
+            N = sum([self.cache_size[n] for n in path[hop - 1:]
+                     if n in self.cache_size])
+            if v in self.cache_size:
+                x += 1
+            self.controller.forward_content_hop(u, v)
+            if v != receiver and v in self.cache_size:
+                # The (x/c) factor raised to the power of "c" according to the
+                # extended version of ProbCache published in IEEE TPDS
+                prob_cache = float(N) / (self.t_tw * self.cache_size[v]) * (x / c) ** c
+                if random.random() < prob_cache:
+                    self.controller.put_content(v)
+        self.controller.end_session()
+        
+@register_strategy('UA_PROB_CACHE')
+class UAProbCache(Strategy):
+    
+    @inheritdoc(Strategy)
+    def __init__(self, view, controller, t_tw=10):
+        super(UAProbCache, self).__init__(view, controller)
+        self.t_tw = t_tw
+        self.cache_size = view.cache_nodes(size=True)
+
+    @inheritdoc(Strategy)
+    def process_event(self, time, receiver, content, log):
+        # get all required data
+        source = self.view.content_source(content)
+        downloaded_content_locations=self.view.content_locations_of_receivers(content)
+        self.controller.start_session(time, receiver, content, log)
+        best_serving_node=''
+        if self.view.has_cache(receiver):
+            if self.controller.get_content(receiver):                
+                serving_node=receiver
+                self.controller.end_session()
+                return
+        if len(downloaded_content_locations)>0: #checks if the list is empty
+            if len (downloaded_content_locations) == 1:
+                best_serving_node = downloaded_content_locations[0]
+            else:
+                nodes_with_shortest_path = [] 
+                lengths_from_rec = []
+                for i in downloaded_content_locations:
+                    lengths_from_rec.append(len(self.view.shortest_path(receiver,i)))
+                shortest_lengths_index = [i for i,mi in enumerate(lengths_from_rec) if mi == min(lengths_from_rec)]
+                for i in shortest_lengths_index:
+                    nodes_with_shortest_path.append(downloaded_content_locations[i])
+                if len(nodes_with_shortest_path) == 1:
+                    best_serving_node = nodes_with_shortest_path[0]
+                else:                
+                                                                                                      
+                    best_serving_node = random.choice(nodes_with_shortest_path) #chooses one random receiver node
+                print ('cache retrieved from download')
+        else :
+            best_serving_node = source
+           
+        path = self.view.shortest_path(receiver, best_serving_node)
+        # Route requests to original source and queries caches on the path
+        
+        for hop in range(1, len(path)):
+            u = path[hop - 1]
+            v = path[hop]
+            self.controller.forward_request_hop(u, v)
+            if self.view.has_cache(v):
+                if self.controller.get_content(v):
+                    serving_node = v
+                    break
+        else:
+            # No cache hits, get content from source
+            self.controller.get_content(v)
+            serving_node = v
+        # Return content
+        path = list(reversed(self.view.shortest_path(receiver, serving_node)))
+        c = len([v for v in path if self.view.has_cache(v)])
+        x = 0.0
+        for hop in range(1, len(path)):
+            u = path[hop - 1]
+            v = path[hop]
+            N = sum([self.cache_size[n] for n in path[hop - 1:]
+                     if n in self.cache_size])
+            if v in self.cache_size:
+                x += 1
+            self.controller.forward_content_hop(u, v)
+            if v != receiver and v in self.cache_size:
+                # The (x/c) factor raised to the power of "c" according to the
+                # extended version of ProbCache published in IEEE TPDS
+                prob_cache = float(N) / (self.t_tw * self.cache_size[v]) * (x / c) ** c
+                if random.random() < prob_cache:
+                    self.controller.put_content(v)
+        self.controller.put_content(receiver)
+        self.controller.end_session()
 
 @register_strategy('CL4M')
 class CacheLessForMore(Strategy):
@@ -409,15 +545,19 @@ class RandomChoice(Strategy):
         # Return content
         path = list(reversed(self.view.shortest_path(receiver, serving_node)))
         caches = [v for v in path[1:-1] if self.view.has_cache(v)]
+        
+        
         designated_cache = random.choice(caches) if len(caches) > 0 else None
         for u, v in path_links(path):
             self.controller.forward_content_hop(u, v)
             if v == designated_cache:
                 self.controller.put_content(v)
         self.controller.end_session()
-
-@register_strategy('UA_RC')
-class UARandomChoice(Strategy):
+        
+        
+#adding receiver as icr candidates and checking if the asking node is same as retrieving node
+@register_strategy('RAND_CHOICE...rec_icr')
+class RandomChoiceWithReceiverAsICRCandidate(Strategy):
     """User-assisted Random choice strategy
 
     This strategy stores the served content exactly in one single cache on the
@@ -426,30 +566,20 @@ class UARandomChoice(Strategy):
 
     @inheritdoc(Strategy)
     def __init__(self, view, controller, **kwargs):
-        super(UARandomChoice, self).__init__(view, controller)
+        super(RandomChoiceWithReceiverAsICRCandidate, self).__init__(view, controller)
 
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log):
         # get all required data
-        source = self.view.content_source(content)#
-        '''
-            use content location code here
-        '''
-        receiver_location=self.view.content_locations_of_receivers(content)
-        print receiver_location
+        source = self.view.content_source(content)
         path = self.view.shortest_path(receiver, source)
         # Route requests to original source and queries caches on the path
-        self.controller.start_session(time, receiver, content, log)
-        
+        self.controller.start_session(time, receiver, content, log)        
         if self.view.has_cache(receiver):
-            if self.controller.get_content(receiver):
-                
+            if self.controller.get_content(receiver):                
                 serving_node=receiver
                 self.controller.end_session()
-                return
-        else:
-            print "Error: Receiver has no cache"
-                
+                return                
         for u, v in path_links(path):
             self.controller.forward_request_hop(u, v)
             if self.view.has_cache(v):
@@ -474,38 +604,48 @@ class UARandomChoice(Strategy):
         self.controller.end_session()
 
 
-'''
-@register_strategy('UA_RC')
-class UARandomChoice(Strategy):
+
+#user assisted caching by randomly selecting one of the node that has downloaded the request content
+@register_strategy('UA_RC_rand_rec')
+class UARandomChoiceRR(Strategy):
     """User-assisted Random choice strategy
 
     This strategy stores the served content exactly in one single cache on the
-    path from serving node to receiver selected randomly.
+    path from serving node to receiver selected randomly with serving node being nodes that has downloaded the content from source
+    But if other user don't have the content, it will go to the source for the content. While going to the user for the content it
+    also checks other node on the way if they have content
     """
-
+    counter_cache_same_receiver=0#counter to count
     @inheritdoc(Strategy)
     def __init__(self, view, controller, **kwargs):
-        super(UARandomChoice, self).__init__(view, controller)
+        super(UARandomChoiceRR, self).__init__(view, controller)
 
     @inheritdoc(Strategy)
     def process_event(self, time, receiver, content, log):
         # get all required data
         source = self.view.content_source(content)#
-        receiver_location=self.view.content_locations_of_receivers(content)
-        print receiver_location
-        path = self.view.shortest_path(receiver, source)
-        # Route requests to original source and queries caches on the path
+        downloaded_content_locations=self.view.content_locations_of_receivers(content) 
+            
+       
         self.controller.start_session(time, receiver, content, log)
-        
-        if self.view.has_cache(receiver):
-            if self.controller.get_content(receiver):
-                
+        best_serving_node = ''
+        if self.view.has_cache(receiver): #checking if the asking node is same as delevering node
+            if self.controller.get_content(receiver):                
                 serving_node=receiver
                 self.controller.end_session()
+                self.counter_cache_same_receiver=self.counter_cache_same_receiver+1
                 return
-        else:
-            print "Error: Receiver has no cache"
+                #print self.counter_same_receiver                
+            
+        if len(downloaded_content_locations)>0: #checks if the list is empty
+            chosen_receiver = random.choice(downloaded_content_locations) #chooses one random receiver node
+            best_serving_node = chosen_receiver
+            print ('cache retrieved from download')
+        else :
+            best_serving_node = source
                 
+        path = self.view.shortest_path(receiver, best_serving_node)
+        # Route requests to either to downloaded content node or source and queries caches on the path        
         for u, v in path_links(path):
             self.controller.forward_request_hop(u, v)
             if self.view.has_cache(v):
@@ -528,4 +668,83 @@ class UARandomChoice(Strategy):
         self.controller.put_content(receiver)
         #put content on the receiver
         self.controller.end_session()
-'''
+
+#user assisted caching by selecting one of the node with shortest path that has downloaded the requested content
+@register_strategy('UA_RC_short_rec')
+class UARandomChoiceSR(Strategy):
+    """User-assisted Random choice strategy
+
+    This strategy stores the served content exactly in one single cache on the
+    path from serving node to receiver selected randomly with serving node being nodes that has downloaded the content from source
+    But if other user don't have the content, it will go to the source for the content. While going to the user for the content it
+    also checks other node on the way if they have content
+    """
+    counter_cache_same_receiver=0#counter to count
+    @inheritdoc(Strategy)
+    def __init__(self, view, controller, **kwargs):
+        super(UARandomChoiceSR, self).__init__(view, controller)
+
+    @inheritdoc(Strategy)
+    def process_event(self, time, receiver, content, log):
+        # get all required data
+        source = self.view.content_source(content)#
+        downloaded_content_locations=self.view.content_locations_of_receivers(content) 
+            
+       
+        self.controller.start_session(time, receiver, content, log)
+        best_serving_node = ''
+        if self.view.has_cache(receiver): #checking if the asking node is same as delevering node
+            if self.controller.get_content(receiver):                
+                serving_node=receiver
+                self.controller.end_session()
+                self.counter_cache_same_receiver=self.counter_cache_same_receiver+1
+                return
+                #print self.counter_same_receiver                
+            
+        if len(downloaded_content_locations)>0: #checks if the list is empty
+            if len (downloaded_content_locations) == 1:
+                best_serving_node = downloaded_content_locations[0]
+            else:
+                nodes_with_shortest_path = [] 
+                lengths_from_rec = []
+                for i in downloaded_content_locations:
+                    lengths_from_rec.append(len(self.view.shortest_path(receiver,i)))
+                shortest_lengths_index = [i for i,mi in enumerate(lengths_from_rec) if mi == min(lengths_from_rec)]
+                for i in shortest_lengths_index:
+                    nodes_with_shortest_path.append(downloaded_content_locations[i])
+                if len(nodes_with_shortest_path) == 1:
+                    best_serving_node = nodes_with_shortest_path[0]
+                else:                     
+                                                                                                      
+                    best_serving_node = random.choice(nodes_with_shortest_path) #chooses one random receiver node
+                print ('cache retrieved from download')
+        else :
+            best_serving_node = source
+                
+        path = self.view.shortest_path(receiver, best_serving_node)
+        # Route requests to either to downloaded content node or source and queries caches on the path        
+        for u, v in path_links(path):
+            self.controller.forward_request_hop(u, v)
+            if self.view.has_cache(v):
+                if self.controller.get_content(v):
+                    serving_node = v
+                    break
+        else:
+            # No cache hits, get content from source
+            self.controller.get_content(v)
+            serving_node = v
+            
+        # Return content
+        path = list(reversed(self.view.shortest_path(receiver, serving_node)))
+        caches = [v for v in path[1:-1] if self.view.has_cache(v)]
+        designated_cache = random.choice(caches) if len(caches) > 0 else None
+        for u, v in path_links(path):
+            self.controller.forward_content_hop(u, v)
+            if v == designated_cache:
+                self.controller.put_content(v)
+        self.controller.put_content(receiver)
+        #put content on the receiver
+        self.controller.end_session()
+
+
+

@@ -279,9 +279,13 @@ TOPOLOGIES =  [
 # The code is located in ./icarus/models/strategy.py
 # Remove strategies not needed
 STRATEGIES = [
-        'RAND_CHOICE',
-        'UA_RC'     # Random choice: cache in one random cache on path
-             ]
+        'RAND_CHOICE', #Random choice: cache in one random cache on path
+        'RAND_CHOICE...rec_icr', # Random choice with receivers also storing the cache
+        'UA_RC_rand_rec',     # user assisted caching by randomly selecting the user to download the content from
+        'UA_RC_short_rec',                   #user assisted caching by selecting the user to download that has shortest path from the receiving node
+        'PROB_CACHE',
+        'PROB_CACHE...rec_icr', #probcache strategy where receivers are able to store the content
+        'UA_PROB_CACHE'     ]
 
 # Instantiate experiment queue
 EXPERIMENT_QUEUE = deque()
