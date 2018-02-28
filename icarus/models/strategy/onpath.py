@@ -624,10 +624,22 @@ class UARandomChoiceRR(Strategy):
     def process_event(self, time, receiver, content, log):
         # get all required data
         source = self.view.content_source(content)#
+        randomNumber = random.randint(1,101)
         downloaded_content_locations=self.view.content_locations_of_receivers(content) 
+       
+        
             
        
         self.controller.start_session(time, receiver, content, log)
+         #simulation of receivers disappearing
+        if len(downloaded_content_locations)>=1:
+            if randomNumber>5 and randomNumber<=10:
+                offline_node=random.choice(downloaded_content_locations)
+                self.controller.remove_content(offline_node)
+                downloaded_content_locations.remove(offline_node)
+                print '---------------------------------'
+                print offline_node 
+                print '----------------------------------'
         best_serving_node = ''
         if self.view.has_cache(receiver): #checking if the asking node is same as delevering node
             if self.controller.get_content(receiver):                
