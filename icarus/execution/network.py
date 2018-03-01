@@ -13,6 +13,7 @@ The `NetworkController` is also responsible to notify a `DataCollectorProxy`
 of all relevant events.
 """
 import logging
+import random
 
 import networkx as nx
 import fnss
@@ -625,7 +626,20 @@ class NetworkController(object):
             return True
         else:
             return False
-
+        
+    def disappearing_users_simulation(self,users,prob):
+        randomNumber = random.randint(1,101)
+        if len(users)>=1:
+            if randomNumber>5 and randomNumber<=10: #%5 chance that some random user gets offline
+                offline_node=random.choice(users)
+                self.remove_content(offline_node)
+                print '---------------------------------'
+                print offline_node 
+                print '----------------------------------'    
+                return offline_node
+                
+                
+               
     def remove_content(self, node):
         """Remove the content being handled from the cache
 
@@ -640,7 +654,8 @@ class NetworkController(object):
             *True* if the entry was in the cache, *False* if it was not.
         """
         if node in self.model.cache:
-            return self.model.cache[node].remove(self.session['content'])
+            for content in self.model.content_source.keys():
+                self.model.cache[node].remove(content)
 
     def end_session(self, success=True):
         """Close a session

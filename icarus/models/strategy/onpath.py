@@ -22,7 +22,8 @@ __all__ = [
        'RandomChoice',
        'RandomChoiceWithReceiverAsICRCandidate',
        'UARandomChoiceRR',
-       'UARandomChoiceRR'  
+       'UARandomChoiceRR',
+       'UARandomChoiceWithDis'  
        
            ]
 
@@ -624,22 +625,17 @@ class UARandomChoiceRR(Strategy):
     def process_event(self, time, receiver, content, log):
         # get all required data
         source = self.view.content_source(content)#
-        randomNumber = random.randint(1,101)
-        downloaded_content_locations=self.view.content_locations_of_receivers(content) 
-       
         
-            
+        downloaded_content_locations=self.view.content_locations_of_receivers(content)    
+                  
        
         self.controller.start_session(time, receiver, content, log)
-         #simulation of receivers disappearing
-        if len(downloaded_content_locations)>=1:
-            if randomNumber>5 and randomNumber<=10:
-                offline_node=random.choice(downloaded_content_locations)
-                self.controller.remove_content(offline_node)
-                downloaded_content_locations.remove(offline_node)
-                print '---------------------------------'
-                print offline_node 
-                print '----------------------------------'
+        
+        #simulation of receivers disappearing
+        offline_node=self.controller.disappearing_users_simulation(downloaded_content_locations)
+        if (offline_node):
+            downloaded_content_locations.remove(offline_node)         
+        
         best_serving_node = ''
         if self.view.has_cache(receiver): #checking if the asking node is same as delevering node
             if self.controller.get_content(receiver):                
@@ -759,4 +755,76 @@ class UARandomChoiceSR(Strategy):
         self.controller.end_session()
 
 
+@register_strategy('UA_RC_with_dis')
+class UARandomChoiceWithDis(Strategy):
+    """User-assisted Random choice strategy
 
+    This strategy stores the served content exactly in one single cache on the
+    path from serving node to receiver selected randomly with serving node being nodes that has downloaded the content from source
+    But if other user don't have the content, it will go to the source for the content. While going to the user for the content it
+    also checks other node on the way if they have content
+    """
+    counter_cache_same_receiver=0#counter to count
+    @inheritdoc(Strategy)
+    def __init__(self, view, controller,prob_user_dis):
+        super(UARandomChoiceWithDis, self).__init__(view, controller)
+        self.prob_user_dis=prob_user_dis
+
+    @inheritdoc(Strategy)
+    def process_event(self, time, receiver, content, log):
+        # get all required data
+        source = self.view.content_source(content)#
+        
+        downloaded_content_locations=self.view.content_locations_of_receivers(content)    
+                  
+       
+        self.controller.start_session(time, receiver, content, log)
+        
+        #simulation of receivers disappearing
+        offline_node=self.controller.disappearing_users_simulation(downloaded_content_locations,self.prob_user_dis)
+        if (offline_node is not None):
+            new_list=self.view.content_locations_of_receivers(content)
+            if offline_node in new_list:
+                print 'There is an error because the users content is available although user is offline'
+            downloaded_content_locations.remove(offline_node)         
+        
+        best_serving_node = ''
+        if self.view.has_cache(receiver): #checking if the asking node is same as delevering node
+            if self.controller.get_content(receiver):                
+                serving_node=receiver
+                self.controller.end_session()
+                self.counter_cache_same_receiver=self.counter_cache_same_receiver+1
+                return
+                #print self.counter_same_receiver                
+            
+        if len(downloaded_content_locations)>0: #checks if the list is empty
+            chosen_receiver = random.choice(downloaded_content_locations) #chooses one random receiver node
+            best_serving_node = chosen_receiver
+            print ('cache retrieved from download')
+        else :
+            best_serving_node = source
+                
+        path = self.view.shortest_path(receiver, best_serving_node)
+        # Route requests to either to downloaded content node or source and queries caches on the path        
+        for u, v in path_links(path):
+            self.controller.forward_request_hop(u, v)
+            if self.view.has_cache(v):
+                if self.controller.get_content(v):
+                    serving_node = v
+                    break
+        else:
+            # No cache hits, get content from source
+            self.controller.get_content(v)
+            serving_node = v
+            
+        # Return content
+        path = list(reversed(self.view.shortest_path(receiver, serving_node)))
+        caches = [v for v in path[1:-1] if self.view.has_cache(v)]
+        designated_cache = random.choice(caches) if len(caches) > 0 else None
+        for u, v in path_links(path):
+            self.controller.forward_content_hop(u, v)
+            if v == designated_cache:
+                self.controller.put_content(v)
+        self.controller.put_content(receiver)
+        #put content on the receiver
+        self.controller.end_session()

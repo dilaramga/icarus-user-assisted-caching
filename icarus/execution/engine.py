@@ -53,6 +53,7 @@ def exec_experiment(topology, workload, netconf, strategy, cache_policy, collect
     controller.attach_collector(collector)
 
     strategy_name = strategy['name']
+    #strategy_prob = strategy['prob']
     strategy_args = {k: v for k, v in strategy.items() if k != 'name'}
     strategy_inst = STRATEGY[strategy_name](view, controller, **strategy_args)
 

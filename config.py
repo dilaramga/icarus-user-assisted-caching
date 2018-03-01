@@ -262,7 +262,7 @@ CACHE_POLICY = 'LRU'
 
 # Zipf alpha parameter, remove parameters not needed
 ALPHA = [0.5]
-
+prob_user_dis=[0.2]
 # Total size of network cache as a fraction of content population
 # Remove sizes not needed
 NETWORK_CACHE = [0.004]
@@ -281,11 +281,12 @@ TOPOLOGIES =  [
 STRATEGIES = [
         #'RAND_CHOICE', #Random choice: cache in one random cache on path
         #'RAND_CHOICE...rec_icr', # Random choice with receivers also storing the cache
-        'UA_RC_rand_rec',     # user assisted caching by randomly selecting the user to download the content from
+        #'UA_RC_rand_rec',     # user assisted caching by randomly selecting the user to download the content from
         #'UA_RC_short_rec',                   #user assisted caching by selecting the user to download that has shortest path from the receiving node
         #'PROB_CACHE',
         #'PROB_CACHE...rec_icr', #probcache strategy where receivers are able to store the content
-        #'UA_PROB_CACHE'     
+        #'UA_PROB_CACHE'    
+        'UA_RC_with_dis' 
         ]
 
 # Instantiate experiment queue
@@ -311,6 +312,7 @@ for alpha in ALPHA:
                 experiment = copy.deepcopy(default)
                 experiment['workload']['alpha'] = alpha
                 experiment['strategy']['name'] = strategy
+                experiment['strategy']['prob_user_dis'] = prob_user_dis
                 experiment['topology']['name'] = topology
                 experiment['cache_placement']['network_cache'] = network_cache
                 experiment['desc'] = "Alpha: %s, strategy: %s, topology: %s, network cache: %s" \
