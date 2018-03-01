@@ -630,13 +630,11 @@ class NetworkController(object):
     def disappearing_users_simulation(self,users,prob):
         randomNumber = random.randint(1,101)
         if len(users)>=1:
-            if randomNumber>5 and randomNumber<=10: #%5 chance that some random user gets offline
+            if randomNumber<=(prob*100): 
                 offline_node=random.choice(users)
                 self.remove_content(offline_node)
-                print '---------------------------------'
-                print offline_node 
-                print '----------------------------------'    
                 return offline_node
+        return None
                 
                 
                

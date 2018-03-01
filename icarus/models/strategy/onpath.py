@@ -800,7 +800,6 @@ class UARandomChoiceWithDis(Strategy):
         if len(downloaded_content_locations)>0: #checks if the list is empty
             chosen_receiver = random.choice(downloaded_content_locations) #chooses one random receiver node
             best_serving_node = chosen_receiver
-            print ('cache retrieved from download')
         else :
             best_serving_node = source
                 
